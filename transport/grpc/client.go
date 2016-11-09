@@ -64,6 +64,20 @@ func NewClient(
 // ClientOption sets an optional parameter for clients.
 type ClientOption func(*Client)
 
+type rpcError struct {
+	rpc error
+	err error
+}
+
+// RPC returns a grpc struct error for retrieving error description using grpc.ErrorDesc(error)
+func (e *rpcError) RPC() error {
+	return e.rpc
+}
+
+func (e *rpcError) Error() string {
+	return e.err.Error()
+}
+
 // ClientBefore sets the RequestFuncs that are applied to the outgoing gRPC
 // request before it's invoked.
 func ClientBefore(before ...RequestFunc) ClientOption {
@@ -90,7 +104,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 
 		grpcReply := reflect.New(c.grpcReply).Interface()
 		if err = grpc.Invoke(ctx, c.method, req, grpcReply, c.client); err != nil {
-			return nil, fmt.Errorf("Invoke: %v", err)
+			return nil, &rpcError{rpc: err, err: fmt.Errorf("Invoke: %v", err)}
 		}
 
 		response, err := c.dec(ctx, grpcReply)
